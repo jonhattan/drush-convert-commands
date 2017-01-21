@@ -38,8 +38,7 @@ function drush_convert_to_annotated($commandfile) {
     if ($command['commandfile'] != $commandfile) {
       continue;
     }
-    if ($name != 'pm-info') {continue;}
-    var_dump($command);
+
     // Skip aliases.
     if ($name == $command['command']) {
       drush_log(dt('Generating @command annotation.', ['@command' => $name]), 'ok');
