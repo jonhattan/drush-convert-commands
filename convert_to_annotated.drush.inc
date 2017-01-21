@@ -69,6 +69,8 @@ function _drush_convert_to_annotated_get_header($commandfile) {
   $lines = [];
   $lines[] = '<?php';
   $lines[] = '';
+  $lines[] = 'namespace Drush\Commands;';
+  $lines[] = '';
   $lines[] = 'class ' . ucfirst($commandfile). 'Commands {';
   $lines[] = '';
 
