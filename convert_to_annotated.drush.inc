@@ -5,7 +5,7 @@
  *
  * @return array
  */
-function drush_convert_commands_drush_command() {
+function convert_to_annotated_drush_command() {
   $items = [];
   $items['convert-to-annotated'] = [
     'arguments' => ['Commandfile'],
@@ -19,7 +19,7 @@ function drush_convert_commands_drush_command() {
  *
  * @param null $commandfile
  */
-function drush_drush_convert_commands_validate($commandfile = NULL) {
+function drush_convert_to_annotated_validate($commandfile = NULL) {
   $all = drush_commandfile_list();
   if (!array_key_exists($commandfile, $all)) {
     drush_set_error('UNKNOWN_COMMANDFILE', dt('UNKNOWN_COMMANDFILE @file. Choose one of @files.', ['@file' => $commandfile, '@files' => implode(', ', array_keys($all))]));
@@ -30,21 +30,23 @@ function drush_drush_convert_commands_validate($commandfile = NULL) {
  * Command callback.
  * @param $commandfile
  */
-function drush_drush_convert_commands($commandfile) {
-  $output = _drush_convert_commands_get_header($commandfile);
+function drush_convert_to_annotated($commandfile) {
+  $output = _drush_convert_to_annotated_get_header($commandfile);
 
   $commands = drush_get_commands();
   foreach ($commands as $name => $command) {
     if ($command['commandfile'] != $commandfile) {
       continue;
     }
+    if ($name != 'pm-info') {continue;}
+    var_dump($command);
     // Skip aliases.
     if ($name == $command['command']) {
       drush_log(dt('Generating @command annotation.', ['@command' => $name]), 'ok');
-      $annotation = _drush_convert_commands_get_annotation($command);
+      $annotation = _drush_convert_to_annotated_get_annotation($command);
 
       drush_log(dt('Generating @command method.', ['@command' => $name]), 'ok');
-      $method = _drush_convert_commands_get_method($command);
+      $method = _drush_convert_to_annotated_get_method($command);
 
       $output .= "\n" . $annotation . $method;
 
@@ -52,7 +54,7 @@ function drush_drush_convert_commands($commandfile) {
   }
 
   $output .= '}'; // End of class.
-  $filename = "/tmp/${commandfile}Commands.php";
+  $filename = '/tmp/' . ucfirst($commandfile) . 'Commands.php';
   file_put_contents($filename, $output);
 
   drush_log(dt('Written to @filename.', ['@filename' => $filename]), 'status');
@@ -64,7 +66,7 @@ function drush_drush_convert_commands($commandfile) {
  * @param $commandfile
  * @return string
  */
-function _drush_convert_commands_get_header($commandfile) {
+function _drush_convert_to_annotated_get_header($commandfile) {
   $lines = [];
   $lines[] = '<?php';
   $lines[] = '';
@@ -80,7 +82,7 @@ function _drush_convert_commands_get_header($commandfile) {
  * @param int $bootstrap
  * @return string
  */
-function _drush_convert_commands_get_bootstrap_string($bootstrap) {
+function _drush_convert_to_annotated_get_bootstrap_string($bootstrap) {
   $levels = array_filter(get_defined_constants(), function ($key) {return strpos($key, "DRUSH_BOOTSTRAP_") === 0;}, ARRAY_FILTER_USE_KEY);
   $levels = array_flip($levels);
 
@@ -94,20 +96,21 @@ function _drush_convert_commands_get_bootstrap_string($bootstrap) {
  *   Command definition
  * @return string
  */
-function _drush_convert_commands_get_annotation(array $command) {
+function _drush_convert_to_annotated_get_annotation(array $command) {
   $lines = [];
   $lines[] = $command['description'];
   $lines[] = '';
   $lines[] = "@command ${command['command']}";
   $lines[] = '@aliases ' . implode(', ', $command['aliases']);
-  $lines[] = "@bootstrap " . _drush_convert_commands_get_bootstrap_string($command['bootstrap']);
+  $lines[] = "@bootstrap " . _drush_convert_to_annotated_get_bootstrap_string($command['bootstrap']);
   $lines[] = '';
   foreach ($command['arguments'] as $k => $v) {
     $lines[] = "@param string \$$k $v";
   }
   foreach ($command['options'] as $k => $v) {
-    $d = (is_array($v)) ? $v['description'] : $v;
-    $lines[] = "@option \$$k $d";
+    if (empty($v['hidden'])) {
+      $lines[] = "@option \$$k ${v['description']}";
+    }
   }
   // Complete callback.
   $complete_callback = 'drush_';
@@ -148,7 +151,7 @@ function _drush_convert_commands_get_annotation(array $command) {
  * @param $command
  * @return string
  */
-function _drush_convert_commands_get_method($command) {
+function _drush_convert_to_annotated_get_method($command) {
   $name = $command['command'];
   if (strpos($name, $command['commandfile'] . '-') === 0) {
     $name = substr($name, strlen($command['commandfile']) + 1);
@@ -167,7 +170,7 @@ function _drush_convert_commands_get_method($command) {
     $params[] = '$options = [' . implode(', ', $options) . ']';
   }
 
-  $body = _drush_convert_commands_get_callback_body($command);
+  $body = _drush_convert_to_annotated_get_callback_body($command);
 
   $method = [];
   $method[] = "  public function $name(" . implode(', ', $params) . ") {";
@@ -183,7 +186,7 @@ function _drush_convert_commands_get_method($command) {
  *
  * @param $f function name
  */
-function _drush_convert_commands_get_callback_body($command) {
+function _drush_convert_to_annotated_get_callback_body($command) {
   $output = '';
 
   // Include the external command file used by this command, if there is one.
