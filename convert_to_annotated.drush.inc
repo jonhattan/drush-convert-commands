@@ -163,7 +163,9 @@ function _drush_convert_to_annotated_get_method($command) {
   }
   $options = [];
   foreach ($command['options'] as $opt => $desc) {
-    $options[] = "'$opt' => ''";
+    if (empty($desc['hidden'])) {
+      $options[] = "'$opt' => ''";
+    }
   }
   if (!empty($options)) {
     $params[] = '$options = [' . implode(', ', $options) . ']';
